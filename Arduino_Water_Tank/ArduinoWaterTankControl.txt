@@ -1,0 +1,110 @@
+/*============================================================================================
+==============================================================================================
+==============================================================================================
+Costa Rica Water Tank / Water Well Management
+Fully Autonomous with Switch Option
+Created by Ruander Cardenas
+Last Updated on: 12/19/2015
+==============================================================================================
+==============================================================================================
+=============================================================================================*/
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++ USER INPUTS +++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//Define Pins to be Used
+#define pinSensor 12 // Water Sensor: Not using 13 due to onboard LED circuit
+#define pinRelay1 11 // Relay No. 1 signal
+#define pinRelay2 10 // Relay No. 2 signal
+#define pinLED1 9 // Pump On or Off status LED
+#define pinLED2 8 // Sensor Air or Water LED
+#define pinButton 7 // Manual on and off switch
+//Define Constants
+const unsigned long ontime = 600000; // Units of millisecons: (min)x(s/min)x(ms/s)=ms (10 mins --> 600000 ms)
+const unsigned long offtime = 7200000; // (10/60/60)*(60)*(60)*(1000); //Units of millisecons:(hr)x(min/hr)x(s/min)x(ms/s)=ms (2.5 hrs --> 9000000 ms)
+const int t_inc = 250; // Milliseconds to wait inside the loop
+// Define Variables
+int sensorState; // Variable for tank full (LOW) or not full (HIGH)
+int buttonState; // Variable for manual switch: ON (LOW) or OFF (HIGH)
+unsigned long t_on = 0; // Variable for time pump has been on. Assumes pump has not been on
+unsigned long t_off = offtime; // Variable for time pump has been off. Assumes pump has been off for atleast offtime limit
+unsigned long ti; // Time at the start of the loop
+unsigned long tf; // Time at the end of the loop
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+void setup() {
+// put your setup code here, to run once:
+pinMode(pinSensor, INPUT);
+pinMode(pinButton, INPUT_PULLUP);
+pinMode(pinRelay1, OUTPUT);
+pinMode(pinRelay2, OUTPUT);
+pinMode(pinLED1, OUTPUT);
+pinMode(pinLED2, OUTPUT);
+// Initialize Serial for debugging purposes
+//Serial.begin (9600);
+}
+void loop() {
+// put your main code here, to run repeatedly:
+ti=micros();
+sensorState = digitalRead(pinSensor);
+buttonState = digitalRead(pinButton);
+if (sensorState == LOW) { //Turn on LED2 to indicate tank is full
+digitalWrite(pinLED2,HIGH);
+t_off=0; //Reset off time to zero (prevents jerking on and off pump)
+}
+if (sensorState == HIGH) { //Turn off LED2 to indicate tank is not full
+digitalWrite(pinLED2,LOW);
+}
+if (buttonState == LOW) { on2(); //Pump on
+} else {
+if (t_off < offtime) {off(); //Pump off while water in well replenishes
+} else {
+if (sensorState == LOW) {off(); //Pump off since tank is full
+} else {
+if (t_on < ontime) { on(); //Pump on
+}
+if (t_on > ontime) { off(); //Pump off
+}
+}
+}
+}
+delay(t_inc);
+tf=micros();
+//Serial Commands for debugging Purposes
+//Serial.print("On Time = ");
+//Serial.println(t_on);
+//Serial.print("Off Time = ");
+//Serial.println(t_off);
+}
+//=================================================================================
+//=================================================================================
+//=================================================================================
+void on(){
+digitalWrite(pinRelay1,HIGH);
+digitalWrite(pinRelay2,HIGH);
+digitalWrite(pinLED1,HIGH);
+t_on = t_on + t_inc;
+if(t_on > ontime - t_inc){ t_off=0; //Reset off time to zero
+}
+}
+//=================================================================================
+//=================================================================================
+//=================================================================================
+void off(){
+digitalWrite(pinRelay1,LOW);
+digitalWrite(pinRelay2,LOW);
+digitalWrite(pinLED1,LOW);
+t_off = t_off + t_inc;
+if(t_off > offtime - t_inc){ t_on=0; //Reset on time to zero
+}
+}
+//=================================================================================
+//=================================================================================
+//=================================================================================
+void on2(){
+digitalWrite(pinRelay1,HIGH);
+digitalWrite(pinRelay2,HIGH);
+digitalWrite(pinLED1,HIGH);
+t_off = 0; //Assumes well needs a full braek after manual switch
+t_on = ontime; // Assmes pump was manually turned on for the max time
+}
